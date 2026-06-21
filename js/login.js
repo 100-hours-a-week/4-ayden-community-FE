@@ -22,24 +22,21 @@ const loginClick = async () => {
     const { id: email, password } = loginData;
     const helperTextElement = document.querySelector('.helperText');
 
-    const { ok, status, code } = await userLogin(email, password);
-    if (!ok) {
-        updateHelperText(
-            helperTextElement,
-            code === 'INVALID_INPUT'
-                ? '*입력값을 확인해주세요.'
-                : '*입력하신 계정 정보가 정확하지 않았습니다.',
-        );
-        return;
-    }
-
-    if (status !== HTTP_OK) {
+    const { ok, status, body } = await userLogin(email, password);
+    if (!ok || status !== HTTP_OK) {
         updateHelperText(
             helperTextElement,
             '*입력하신 계정 정보가 정확하지 않았습니다.',
         );
         return;
     }
+
+    // 로그인 응답: { user: {...}, token: { accessToken, expiresIn } }
+    if (body && body.token && body.token.accessToken) {
+        localStorage.setItem('accessToken', body.token.accessToken);
+        localStorage.setItem('user', JSON.stringify(body.user));
+    }
+
     updateHelperText(helperTextElement);
 
     location.href = '/html/index.html';

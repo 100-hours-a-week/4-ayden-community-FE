@@ -64,7 +64,7 @@ const CommentItem = (data, writerId, postId, commentId) => {
             // 서버로 수정된 댓글 내용 전송하는 로직
             const updatedContent = textarea.value;
             const sendData = {
-                commentContent: updatedContent,
+                commentText: updatedContent,
             };
 
             const { ok } = await updateComment(postId, commentId, sendData);
@@ -100,10 +100,8 @@ const CommentItem = (data, writerId, postId, commentId) => {
 
     const img = document.createElement('img');
     img.className = 'commentImg';
-    img.src = resolveImageUrl(
-        data.author && data.author.profileImageUrl,
-        DEFAULT_PROFILE_IMAGE,
-    );
+    // 댓글 응답에 작성자 프로필 이미지 없음 → 기본 이미지 사용
+    img.src = DEFAULT_PROFILE_IMAGE;
     picture.appendChild(img);
 
     const commentInfoWrap = document.createElement('div');
@@ -113,19 +111,26 @@ const CommentItem = (data, writerId, postId, commentId) => {
     infoDiv.className = 'commentInfoHeader';
 
     const h3 = document.createElement('h3');
-    h3.textContent = data.author ? data.author.nickname : '';
+    h3.textContent = data.nickName || '';
     infoDiv.appendChild(h3);
 
     const h4 = document.createElement('h4');
-    const date = new Date(data.createdAt);
+    // const date = new Date(data.createdAt);
+    //생성 낢짜 말고 수정된 시간이 화면에 표시 되도록 변경
+    const isUpdated =
+    data.updatedAt &&
+    data.updatedAt !== data.createdAt;
+
+const displayDate = isUpdated ? data.updatedAt : data.createdAt;
+
+const date = new Date(displayDate);
+
+    
     const formattedDate = `${date.getFullYear()}-${padTo2Digits(date.getMonth() + 1)}-${padTo2Digits(date.getDate())} ${padTo2Digits(date.getHours())}:${padTo2Digits(date.getMinutes())}:${padTo2Digits(date.getSeconds())}`;
     h4.textContent = formattedDate;
     infoDiv.appendChild(h4);
 
-    if (
-        data.author &&
-        parseInt(data.author.userId, 10) === parseInt(writerId, 10)
-    ) {
+    if (parseInt(data.userId, 10) === parseInt(writerId, 10)) {
         const buttonWrap = document.createElement('span');
 
         const deleteButton = document.createElement('button');
@@ -142,7 +147,7 @@ const CommentItem = (data, writerId, postId, commentId) => {
     }
 
     const p = document.createElement('p');
-    p.innerHTML = data.content.replace(/(?:\r\n|\r|\n)/g, '<br>');
+    p.innerHTML = (data.commentText || '').replace(/(?:\r\n|\r|\n)/g, '<br>');
 
     commentInfoWrap.appendChild(infoDiv);
     commentInfoWrap.appendChild(p);
