@@ -7,7 +7,8 @@
   "private": true,
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "lint":"eslint ."
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",
@@ -17,5 +18,10 @@
     "node-fetch": "^3.3.2",
     "nodemon": "^3.1.11",
     "sweetalert2": "^11.7.27"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0"
   }
 }
