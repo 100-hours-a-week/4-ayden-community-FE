@@ -147,8 +147,7 @@ jobs:
             -o StrictHostKeyChecking=no \
             -o ProxyCommand="ssh -i ~/.ssh/aydenKey.pem -o StrictHostKeyChecking=no -W %h:%p ubuntu@${{ secrets.BASTION_HOST }}" \
             community-frontend.tar \
-            ubuntu@${{ secrets.FRONTEND_PRIVATE_IP }}:/tmp/community-frontend.tar
-
+            ubuntu@${{ secrets.FRONTEND_PRIVATE_IP }}:/home/ubuntu/community-frontend.tar
 
       # Frontend EC2 배포
       - name: Deploy Frontend
@@ -165,7 +164,7 @@ jobs:
               set -e
 
               # 전달받은 tar 파일을 Docker 이미지로 등록
-              sudo docker load -i /tmp/community-frontend.tar
+              sudo docker load -i /home/ubuntu/community-frontend.tar
 
               # 기존 community-frontend 컨테이너가 존재하면 중지 후 삭제
               if sudo docker ps -a --format '{{.Names}}' | grep -qx 'community-frontend'; then
@@ -181,7 +180,7 @@ jobs:
                 '$IMAGE'
 
               # 사용한 tar 파일 삭제
-              rm -f /tmp/community-frontend.tar
+              rm -f /home/ubuntu/community-frontend.tar
             "
 
 
