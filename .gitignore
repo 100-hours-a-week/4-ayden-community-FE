@@ -11,3 +11,5 @@ yarn-error.log*
 pnpm-debug.log*
 /.cache
 .DS_Store
+community-frontend_1.1.tar
+*.tar

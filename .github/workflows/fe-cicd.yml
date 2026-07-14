@@ -1,0 +1,210 @@
+name: ayden-community-cicd
+
+on:
+  # main 브랜치에 push될 때만 CI/CD 실행
+  push:
+    branches:
+      # 테스트할 때만 아래 사용
+       - feat/cicd-test
+
+      # 실제배포
+      #- main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+
+  ci:
+    # 백엔드와 동일한 Runner 버전 사용
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # 1. 소스 코드 가져오기
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+
+      # 2. Node.js 설정
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+
+      # 3. 의존성 설치
+      - name: Install dependencies
+        run: npm ci
+
+
+      # 4. 테스트
+      - name: Run tests
+        run: npm test
+
+
+      # 5. 린트
+      - name: Run lint
+        run: npm run lint
+
+
+      # 6. 프론트엔드 빌드
+      - name: Run build
+        run: npm run build
+
+
+      # 7. Docker Hub 로그인
+      - name: Docker Login
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+      # 8. Docker 이미지 빌드
+      # github.sha를 Docker 이미지 태그로 사용
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t "${{ secrets.DOCKER_USERNAME }}/community-frontend:${{ github.sha }}" \
+            .
+
+
+      # 9. Docker Hub에 이미지 Push
+      - name: Push Docker image
+        run: |
+          docker push \
+            "${{ secrets.DOCKER_USERNAME }}/community-frontend:${{ github.sha }}"
+
+
+  
+  cd:
+    # CI가 성공한 이후에만 실행
+    # 백엔드 cd와 동일한 흐름
+    needs: ci
+
+    runs-on: ubuntu-24.04
+
+    steps:
+      #러너 ip 받아오기
+      - name: Get GitHub Runner Public IP
+        id: runner-ip
+        run: |
+            RUNNER_IP=$(curl -4 -fsSL https://checkip.amazonaws.com | tr -d '\n')
+            
+            if [ -z "$RUNNER_IP" ]; then
+            echo "Runner IP 조회 실패"
+            exit 1
+            fi
+            
+            echo "Runner public IP: $RUNNER_IP"
+            echo "cidr=${RUNNER_IP}/32" >> "$GITHUB_OUTPUT"
+      #OIDC -> AWS인증
+      - name: Configure AWS Credentials(OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      #배스천 보안그룹에 러너IP추가
+      - name: Add RunnerIP to bastion temp
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.BASTION_SG_ID }}" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "${{ steps.runner-ip.outputs.cidr }}"
+
+
+      # 4. Docker Hub 로그인
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+      # 5. CI가 빌드하고 Push한 동일한 Docker 이미지 Pull
+      - name: Pull Docker image
+        run: |
+          docker pull \
+            "${{ secrets.DOCKER_USERNAME }}/community-frontend:${{ github.sha }}"
+
+
+      # 6. Docker 이미지를 tar 파일로 저장
+      - name: Save Docker image
+        run: |
+          docker save \
+            "${{ secrets.DOCKER_USERNAME }}/community-frontend:${{ github.sha }}" \
+            -o community-frontend.tar
+
+
+      # 7. Secrets에 저장된 PEM 키를 SSH Key 파일로 생성
+      - name: Configure SSH Key
+        run: |
+          mkdir -p ~/.ssh
+
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" \
+            > ~/.ssh/aydenKey.pem
+
+          chmod 600 ~/.ssh/aydenKey.pem
+
+
+      # 8. Bastion을 경유하여 Frontend Private EC2로 tar 파일 전송
+      - name: Copy Docker image to Frontend
+        run: |
+          scp \
+            -i ~/.ssh/aydenKey.pem \
+            -o StrictHostKeyChecking=no \
+            -o ProxyCommand="ssh -i ~/.ssh/aydenKey.pem -o StrictHostKeyChecking=no -W %h:%p ubuntu@${{ secrets.BASTION_HOST }}" \
+            community-frontend.tar \
+            ubuntu@${{ secrets.FRONTEND_PRIVATE_IP }}:/tmp/community-frontend.tar
+
+
+      # 9. 실제 Frontend EC2 배포
+      - name: Deploy Frontend
+        run: |
+          IMAGE="${{ secrets.DOCKER_USERNAME }}/community-frontend:${{ github.sha }}"
+
+          ssh \
+            -i ~/.ssh/aydenKey.pem \
+            -o StrictHostKeyChecking=no \
+            -o ProxyCommand="ssh -i ~/.ssh/aydenKey.pem -o StrictHostKeyChecking=no -W %h:%p ubuntu@${{ secrets.BASTION_HOST }}" \
+            ubuntu@${{ secrets.FRONTEND_PRIVATE_IP }} \
+            "
+              # 이후 명령 중 하나라도 실패하면 전체 실패 처리
+              set -e
+
+              # 전달받은 tar 파일을 Docker 이미지로 등록
+              sudo docker load -i /tmp/community-frontend.tar
+
+              # 기존 community-frontend 컨테이너가 존재하면 중지 후 삭제
+              if sudo docker ps -a --format '{{.Names}}' | grep -qx 'community-frontend'; then
+                sudo docker stop community-frontend
+                sudo docker rm community-frontend
+              fi
+
+              # 새로운 프론트엔드 컨테이너 실행
+              sudo docker run -d \
+                --name community-frontend \
+                --restart always \
+                -p 80:80 \
+                '$IMAGE'
+
+              # 사용한 tar 파일 삭제
+              rm -f /tmp/community-frontend.tar
+            "
+
+
+      # 10. Bastion 보안 그룹에서 임시로 추가했던 Runner IP 삭제
+      - name: Remove TempIP from bastion SG
+
+        # 앞 단계가 실패하더라도 무조건 실행
+        if: always()
+
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "${{ secrets.BASTION_SG_ID }}" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "${{ steps.runner-ip.outputs.cidr }}"
