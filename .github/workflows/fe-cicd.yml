@@ -5,7 +5,7 @@ on:
   push:
     branches:
       # 테스트할 때만 아래 사용
-       - feat/cicd-test
+       - Feat/cicd-test
 
       # 실제배포
       #- main
