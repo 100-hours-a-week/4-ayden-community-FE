@@ -2,7 +2,8 @@ import BoardItem from '../component/board/boardItem.js';
 import Dialog from '../component/dialog/dialog.js';
 import Header from '../component/header/header.js';
 import { authCheck, getServerUrl, prependChild, resolveImageUrl } from '../utils/function.js';
-import { getPosts, searchPosts } from '../api/indexRequest.js';
+import { getPosts } from '../api/indexRequest.js';
+// import { searchPosts } from '../api/indexRequest.js'; // [미구현] 검색 (추후 구현)
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
 const HTTP_NOT_AUTHORIZED = 401;
@@ -26,15 +27,17 @@ const updateSortVisibility = () => {
 
 // getBoardItem 함수
 const getBoardItem = async (offsetValue = 0, limitValue = 5) => {
-    const result =
-        currentKeyword.trim() === ''
-            ? await getPosts(offsetValue, limitValue)
-            : await searchPosts(
-                  currentKeyword,
-                  offsetValue,
-                  limitValue,
-                  currentSort,
-              );
+    const result = await getPosts(offsetValue, limitValue);
+    // [미구현] 검색 분기 (추후 구현)
+    // const result =
+    //     currentKeyword.trim() === ''
+    //         ? await getPosts(offsetValue, limitValue)
+    //         : await searchPosts(
+    //               currentKeyword,
+    //               offsetValue,
+    //               limitValue,
+    //               currentSort,
+    //           );
     if (!result.ok) {
         throw new Error('Failed to load post list.');
     }
@@ -47,14 +50,15 @@ const setBoardItem = boardData => {
         const itemsHtml = boardData
             .map(data =>
                 BoardItem(
-                    data.id,
+                    data.postId,
                     data.createdAt,
-                    data.title,
-                    data.viewCount,
-                    data.author ? data.author.profileImageUrl : null,
-                    data.author ? data.author.nickname : null,
-                    data.commentCount,
-                    data.likeCount,
+                    data.postName,
+                    data.postViewCount,
+                    // 목록 응답에 작성자 프로필 이미지 없음 → 기본 이미지 사용
+                    null,
+                    data.postUser,
+                    data.postCommentCount,
+                    data.postLikesCount,
                 ),
             )
             .join('');
@@ -85,6 +89,8 @@ const loadBoardItems = async ({ reset = false } = {}) => {
             return;
         }
         setBoardItem(items);
+        // 백엔드가 전체 목록을 한 번에 반환 → 1회 로드 후 종료 (페이징 추후 구현)
+        isEnd = true;
         offset += ITEMS_PER_LOAD;
     } catch (error) {
         console.error('Error fetching items:', error);
@@ -149,15 +155,12 @@ const addInfinityScrollEvent = () => {
 
 const init = async () => {
     try {
-        const response = await authCheck();
-        const data = await response.json();
-        if (response.status === HTTP_NOT_AUTHORIZED) {
-            window.location.href = '/html/login.html';
-            return;
-        }
+        // authCheck()는 저장된 user 객체를 반환(없으면 로그인 페이지로 이동)
+        const user = await authCheck();
+        if (!user) return;
 
         const profileImageUrl = resolveImageUrl(
-            data.data.profileImageUrl,
+            user.profileImage,
             DEFAULT_PROFILE_IMAGE,
         );
 
@@ -166,12 +169,13 @@ const init = async () => {
             Header('Community', 0, profileImageUrl),
         );
 
-        updateSortVisibility();
         await loadBoardItems({ reset: true });
 
-        addSearchEvent();
-        addSortEvent();
-        addInfinityScrollEvent();
+        // [미구현] 검색 / 정렬 / 무한 스크롤 (추후 구현)
+        // updateSortVisibility();
+        // addSearchEvent();
+        // addSortEvent();
+        // addInfinityScrollEvent();
     } catch (error) {
         console.error('Initialization failed:', error);
     }

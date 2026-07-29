@@ -9,7 +9,8 @@ import {
 } from '../utils/function.js';
 import {
     createPost,
-    fileUpload,
+    // [미구현] 첨부파일 업로드 (추후 구현)
+    // fileUpload,
     updatePost,
     getBoardItem,
 } from '../api/board-writeRequest.js';
@@ -53,9 +54,9 @@ const observeSignupData = () => {
 // 엘리먼트 값 가져오기 title, content
 const getBoardData = () => {
     return {
-        title: boardWrite.title,
-        content: boardWrite.content,
-        attachFileUrl:
+        postName: boardWrite.title,
+        postContent: boardWrite.content,
+        postImage:
             localStorage.getItem('postFileUrl') === null
                 ? undefined
                 : localStorage.getItem('postFileUrl'),
@@ -69,16 +70,17 @@ const addBoard = async () => {
     // boardData가 false일 경우 함수 종료
     if (!boardData) return Dialog('게시글', '게시글을 입력해주세요.');
 
-    if (boardData.title.length > MAX_TITLE_LENGTH)
+    if (boardData.postName.length > MAX_TITLE_LENGTH)
         return Dialog('게시글', '제목은 26자 이하로 입력해주세요.');
 
     if (!isModifyMode) {
-        const { ok, status, data } = await createPost(boardData);
+        const { ok, status, body } = await createPost(boardData);
         if (!ok) throw new Error('서버 응답 오류');
 
-        if (status === HTTP_CREATED) {
+        // 백엔드는 작성 성공 시 200 반환 -> 여기도 수정이 필요 (컨트롤러)
+        if (status === HTTP_OK || status === HTTP_CREATED) {
             localStorage.removeItem('postFileUrl');
-            window.location.href = `/html/board.html?id=${data.insertId}`;
+            window.location.href = `/html/board.html?id=${body.postId}`;
         } else {
             const helperElement = contentHelpElement;
             helperElement.textContent = '제목, 내용을 모두 작성해주세요.';
@@ -93,7 +95,7 @@ const addBoard = async () => {
         const { ok, status } = await updatePost(postId, setData);
         if (!ok) throw new Error('서버 응답 오류');
 
-        if (status === HTTP_OK) {
+        if (status === HTTP_OK || status === HTTP_CREATED) {
             localStorage.removeItem('postFileUrl');
             window.location.href = `/html/board.html?id=${postId}`;
         } else {
@@ -137,17 +139,16 @@ const changeEventHandler = async (event, uid) => {
             return;
         }
 
-        const formData = new FormData();
-        formData.append('postFile', file);
-
-        // 파일 업로드를 위한 POST 요청 실행
-        try {
-            const { ok, data } = await fileUpload(formData);
-            if (!ok) throw new Error('서버 응답 오류');
-            localStorage.setItem('postFileUrl', data.fileUrl);
-        } catch (error) {
-            console.error('업로드 중 오류 발생:', error);
-        }
+        // [미구현] 첨부파일 업로드 - 백엔드 엔드포인트 없음 (추후 구현)
+        // const formData = new FormData();
+        // formData.append('postFile', file);
+        // try {
+        //     const { ok, data } = await fileUpload(formData);
+        //     if (!ok) throw new Error('서버 응답 오류');
+        //     localStorage.setItem('postFileUrl', data.fileUrl);
+        // } catch (error) {
+        //     console.error('업로드 중 오류 발생:', error);
+        // }
     } else if (uid === 'imagePreviewText') {
         localStorage.removeItem('postFileUrl');
         imagePreviewText.style.display = 'none';
@@ -189,10 +190,10 @@ const addEvent = () => {
 };
 
 const setModifyData = data => {
-    titleInput.value = data.title;
-    contentInput.value = data.content;
+    titleInput.value = data.postName;
+    contentInput.value = data.postContent;
 
-    const fileUrl = data.fileUrl || resolveImageUrl(data.filePath);
+    const fileUrl = resolveImageUrl(data.postImage);
     if (fileUrl) {
         // fileUrl에서 파일 이름만 추출하여 표시
         const fileName = fileUrl.split('/').pop();
@@ -219,19 +220,20 @@ const setModifyData = data => {
         imagePreviewText.style.display = 'none';
     }
 
-    boardWrite.title = data.title;
-    boardWrite.content = data.content;
+    boardWrite.title = data.postName;
+    boardWrite.content = data.postContent;
 
     observeSignupData();
 };
 
 const init = async () => {
-    const dataResponse = await authCheck();
-    const data = await dataResponse.json();
+    // authCheck()는 저장된 user 객체를 반환(없으면 로그인 페이지로 이동)
+    const user = await authCheck();
+    if (!user) return;
     const modifyId = checkModifyMode();
 
     const profileImage = resolveImageUrl(
-        data.data.profileImageUrl,
+        user.profileImage,
         DEFAULT_PROFILE_IMAGE,
     );
 
@@ -241,7 +243,8 @@ const init = async () => {
         isModifyMode = true;
         modifyData = await getBoardModifyData(modifyId);
 
-        if (data.idx !== modifyData.writerId) {
+        // 상세 응답에 작성자 userId가 없어 닉네임으로 본인 글 여부 판단 (서버에서도 권한 검증함)
+        if (user.nickName !== modifyData.postUser) {
             Dialog('권한 없음', '권한이 없습니다.', () => {
                 window.location.href = '/';
             });
