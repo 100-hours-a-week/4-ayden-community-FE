@@ -39,7 +39,8 @@ const loginClick = async () => {
 
     updateHelperText(helperTextElement);
 
-    location.href = '/html/index.html';
+    // location.href = '/html/index.html';
+    location.href = "/posts";
 };
 
 const observeSignupData = () => {

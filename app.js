@@ -2,13 +2,13 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const app = express();
 
 dotenv.config();
 
-// const port = 8080;
-const port = 3001;
+const port = Number(process.env.PORT) || 8082;
 
 // 현재 파일의 URL에서 디렉토리 경로를 추출
 const __filename = fileURLToPath(import.meta.url);
@@ -29,6 +29,8 @@ app.get('/config.js', (req, res) => {
 app.get('/', (req, res) => {
     res.redirect('/html/index.html');
 });
+
+
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
