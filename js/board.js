@@ -14,9 +14,11 @@ import {
     deletePost,
     writeComment,
     getComments,
+    //댓글수
+    getCommentsNum,
     // [미구현] 좋아요 (추후 구현)
-    // likePost,
-    // unlikePost,
+    likePost,
+    unlikePost,
 } from '../api/boardRequest.js';
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
@@ -49,7 +51,9 @@ const getBoardDetail = async postId => {
     return data;
 };
 
-const setBoardDetail = data => {
+// const setBoardDetail = data => {
+// 상세 응답에 id 필드가 없어 좋아요 요청이 /posts/undefined/likes 로 나감 → postId를 인자로 받도록 변경
+const setBoardDetail = (data, postId) => {
     // 헤드 정보
     const titleElement = document.querySelector('.title');
     const createdAtElement = document.querySelector('.createdAt');
@@ -78,11 +82,11 @@ const setBoardDetail = data => {
     contentElement.textContent = data.postContent;
 
     // 좋아요 개수만 표시 (좋아요 토글은 백엔드 미구현)
-    const likeButtonElement = document.querySelector('.likeButton');
-    const likeCountElement = likeButtonElement.querySelector('h3');
-    likeCountElement.textContent = formatCount(data.postLikesCount);
+    // const likeButtonElement = document.querySelector('.likeButton');
+    // const likeCountElement = likeButtonElement.querySelector('h3');
+    // likeCountElement.textContent = formatCount(data.postLikesCount);
 
-    // [미구현] 좋아요 / 좋아요 취소 토글 (추후 구현)
+    // // 좋아요 / 좋아요 취소 토글 
     // let isLiked = Boolean(data.isLiked);
     // let isLikeLoading = false;
     // setLikeButtonState(likeButtonElement, isLiked);
@@ -91,8 +95,11 @@ const setBoardDetail = data => {
     //     isLikeLoading = true;
     //     try {
     //         if (!isLiked) {
+    //             // const { ok, status, code, data: likeData } = await likePost(
+    //             //     data.id,
+    //             // );
     //             const { ok, status, code, data: likeData } = await likePost(
-    //                 data.id,
+    //                 postId,
     //             );
     //             if (ok) {
     //                 isLiked = true;
@@ -111,8 +118,11 @@ const setBoardDetail = data => {
     //                 Dialog('좋아요 실패', '좋아요 처리에 실패하였습니다.');
     //             }
     //         } else {
+    //             // const { ok, status, code, data: likeData } = await unlikePost(
+    //             //     data.id,
+    //             // );
     //             const { ok, status, code, data: likeData } = await unlikePost(
-    //                 data.id,
+    //                 postId,
     //             );
     //             if (ok) {
     //                 isLiked = false;
@@ -135,12 +145,143 @@ const setBoardDetail = data => {
     //         isLikeLoading = false;
     //     }
     // });
+    const likeButtonElement = document.querySelector('.likeButton');
+const likeCountElement = likeButtonElement?.querySelector('h3');
+
+if (!likeButtonElement || !likeCountElement) {
+    console.error('좋아요 버튼 또는 좋아요 개수 요소를 찾지 못했습니다.');
+    return;
+}
+
+likeCountElement.textContent = formatCount(data.postLikesCount ?? 0);
+
+// 백엔드 JSON 키에 맞춰 선택
+let isLiked = Boolean(data.isLiked ?? data.liked);
+let isLikeLoading = false;
+
+setLikeButtonState(likeButtonElement, isLiked);
+
+likeButtonElement.addEventListener('click', async () => {
+    if (isLikeLoading) return;
+
+    isLikeLoading = true;
+    likeButtonElement.disabled = true;
+
+    try {
+        if (!isLiked) {
+            const {
+                ok,
+                status,
+                code,
+                data: likeCount,
+            } = await likePost(postId);
+
+            if (ok) {
+                isLiked = true;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
+                );
+
+                // 백엔드 ApiResponse<Long>의 data는 숫자
+                likeCountElement.textContent =
+                    formatCount(likeCount ?? 0);
+
+            } else if (
+                status === 409 &&
+                code === 'ALREADY_LIKED_POST'
+            ) {
+                isLiked = true;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
+                );
+
+            } else if (status === HTTP_NOT_AUTHORIZED) {
+                window.location.href = '/html/login.html';
+
+            } else {
+                console.error('좋아요 실패:', {
+                    status,
+                    code,
+                });
+
+                Dialog(
+                    '좋아요 실패',
+                    '좋아요 처리에 실패하였습니다.',
+                );
+            }
+
+        } else {
+            const {
+                ok,
+                status,
+                code,
+                data: likeCount,
+            } = await unlikePost(postId); // data.id가 아님
+
+            if (ok) {
+                isLiked = false;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
+                );
+
+                likeCountElement.textContent =
+                    formatCount(likeCount ?? 0);
+
+            } else if (
+                status === 404 &&
+                code === 'POST_LIKE_NOT_FOUND'
+            ) {
+                isLiked = false;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
+                );
+
+            } else if (status === HTTP_NOT_AUTHORIZED) {
+                window.location.href = '/html/login.html';
+
+            } else {
+                console.error('좋아요 취소 실패:', {
+                    status,
+                    code,
+                });
+
+                Dialog(
+                    '좋아요 취소 실패',
+                    '좋아요 취소에 실패하였습니다.',
+                );
+            }
+        }
+    } finally {
+        isLikeLoading = false;
+        likeButtonElement.disabled = false;
+    }
+});
 
     const viewCountElement = document.querySelector('.viewCount h3');
     viewCountElement.textContent = formatCount(data.postViewCount);
+};
 
+// 댓글 수는 게시글 상세 응답에 없어서 /posts/{id}/commentCount 로 따로 조회
+const getBoardCommentCount = async postId => {
+    const { ok, data } = await getCommentsNum(postId);
+    if (!ok) return 0;
+    // 숫자만 오는 경우와 { commentCount: n } 형태 둘 다 대응
+    if (typeof data === 'number') return data;
+    return data?.commentCount ?? data?.count ?? 0;
+};
+
+const setBoardCommentCount = count => {
     const commentCountElement = document.querySelector('.commentCount h3');
-    commentCountElement.textContent = (data.postCommentCount ?? 0).toLocaleString();
+    if (!commentCountElement) return;
+    commentCountElement.textContent = formatCount(count);
 };
 
 const setBoardModify = async (data, myInfo) => {
@@ -267,9 +408,11 @@ const init = async () => {
 
         // 본인 글 여부는 setBoardModify 내부에서 닉네임으로 판단
         setBoardModify(pageData, myInfo);
-        setBoardDetail(pageData);
+        // setBoardDetail(pageData);
+        setBoardDetail(pageData, pageId);
 
         getBoardComment(pageId).then(data => setBoardComment(data, myInfo));
+        getBoardCommentCount(pageId).then(setBoardCommentCount);
     } catch (error) {
         console.error(error);
     }

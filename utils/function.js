@@ -15,7 +15,7 @@ export const getServerUrl = () => {
         host ==='localhost' || host === '127.0.0.1';
     return isLocal
         ? 'http://localhost:8080'
-        : '/api';
+        : 'https://api.ayden1.cloud';
 };
 
 export const resolveImageUrl = (url, fallback = null) => {

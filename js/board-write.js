@@ -80,7 +80,7 @@ const addBoard = async () => {
         // 백엔드는 작성 성공 시 200 반환 -> 여기도 수정이 필요 (컨트롤러)
         if (status === HTTP_OK || status === HTTP_CREATED) {
             localStorage.removeItem('postFileUrl');
-            window.location.href = `/html/board.html?id=${body.postId}`;
+            window.location.href = `/html/board.html?id=${body.data.postId}`;
         } else {
             const helperElement = contentHelpElement;
             helperElement.textContent = '제목, 내용을 모두 작성해주세요.';
