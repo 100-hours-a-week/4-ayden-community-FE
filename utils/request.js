@@ -28,7 +28,10 @@ export const requestJson = async (url, options = {}) => {
         response,
         ok: response.ok,
         status: response.status,
-        code: body && body.code ? body.code : null,
+        // code: body && body.data && body.data.code ? body.data.code : null,
+        // 백엔드 GlobalExceptionHandler는 { success, code, message } 형태로 code를 최상위에 내려줌
+        // → 최상위 code 우선, ApiResponse.data.code 형태는 폴백으로 유지
+        code: body ? (body.code ?? body.data?.code ?? null) : null,
         //아직 백엔드 응답형식 변경 전 -> ApiResponse, Dto방식 둘 다 가능하게
         //body 자체를 반환할 수 있게 추가
         data: body && Object.prototype.hasOwnProperty.call(body, 'data')

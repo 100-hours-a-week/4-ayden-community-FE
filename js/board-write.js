@@ -10,7 +10,7 @@ import {
 import {
     createPost,
     // [미구현] 첨부파일 업로드 (추후 구현)
-    // fileUpload,
+    fileUpload,
     updatePost,
     getBoardItem,
 } from '../api/board-writeRequest.js';
@@ -80,7 +80,7 @@ const addBoard = async () => {
         // 백엔드는 작성 성공 시 200 반환 -> 여기도 수정이 필요 (컨트롤러)
         if (status === HTTP_OK || status === HTTP_CREATED) {
             localStorage.removeItem('postFileUrl');
-            window.location.href = `/html/board.html?id=${body.postId}`;
+            window.location.href = `/html/board.html?id=${body.data.postId}`;
         } else {
             const helperElement = contentHelpElement;
             helperElement.textContent = '제목, 내용을 모두 작성해주세요.';
@@ -140,15 +140,15 @@ const changeEventHandler = async (event, uid) => {
         }
 
         // [미구현] 첨부파일 업로드 - 백엔드 엔드포인트 없음 (추후 구현)
-        // const formData = new FormData();
-        // formData.append('postFile', file);
-        // try {
-        //     const { ok, data } = await fileUpload(formData);
-        //     if (!ok) throw new Error('서버 응답 오류');
-        //     localStorage.setItem('postFileUrl', data.fileUrl);
-        // } catch (error) {
-        //     console.error('업로드 중 오류 발생:', error);
-        // }
+        const formData = new FormData();
+        formData.append('postFile', file);
+        try {
+            const { ok, data } = await fileUpload(formData);
+            if (!ok) throw new Error('서버 응답 오류');
+            localStorage.setItem('postFileUrl', data);
+        } catch (error) {
+            console.error('업로드 중 오류 발생:', error);
+        }
     } else if (uid === 'imagePreviewText') {
         localStorage.removeItem('postFileUrl');
         imagePreviewText.style.display = 'none';

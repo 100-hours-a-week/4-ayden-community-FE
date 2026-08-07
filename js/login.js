@@ -32,15 +32,20 @@ const loginClick = async () => {
     }
 
     // 로그인 응답: { user: {...}, token: { accessToken, expiresIn } }
-    if (body && body.token && body.token.accessToken) {
-        localStorage.setItem('accessToken', body.token.accessToken);
-        localStorage.setItem('user', JSON.stringify(body.user));
+    if (body && body.data && body.data.token && body.data.token.accessToken) {
+        localStorage.setItem('accessToken', body.data.token.accessToken);
+        localStorage.setItem('user', JSON.stringify(body.data.user));
     }
 
     updateHelperText(helperTextElement);
 
+<<<<<<< HEAD
     // location.href = '/html/index.html';
     location.href = "/posts";
+=======
+
+    location.href = '/html/index.html';
+>>>>>>> dev
 };
 
 const observeSignupData = () => {

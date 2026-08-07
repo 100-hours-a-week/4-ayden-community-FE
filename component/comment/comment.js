@@ -101,7 +101,8 @@ const CommentItem = (data, writerId, postId, commentId) => {
     const img = document.createElement('img');
     img.className = 'commentImg';
     // 댓글 응답에 작성자 프로필 이미지 없음 → 기본 이미지 사용
-    img.src = DEFAULT_PROFILE_IMAGE;
+    // img.src = DEFAULT_PROFILE_IMAGE;
+    img.src = resolveImageUrl(data.profileImage) || DEFAULT_PROFILE_IMAGE;
     picture.appendChild(img);
 
     const commentInfoWrap = document.createElement('div');

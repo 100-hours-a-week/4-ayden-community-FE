@@ -139,9 +139,10 @@ const modifyPassword = async () => {
         });
 
         const result = await changePassword(data.userId, password, passwordCheck);
-        console.long("pwdResponse",result);
+        console.log("pwdResponse",result);
 
         localStorage.clear();
+        
         //임시로 막아둠
         location.href = '/html/login.html';
     } catch (error) {

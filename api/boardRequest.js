@@ -28,6 +28,12 @@ export const writeComment = async (postId, comment) => {
     return result;
 };
 
+export const getCommentsNum = async postId => {
+    const result = await requestJson(`${getServerUrl()}/posts/${postId}/commentCount`, {
+        // credentials: 'include',
+    });
+    return result;
+};
 export const getComments = async postId => {
     const result = await requestJson(`${getServerUrl()}/posts/${postId}/comments`, {
         // credentials: 'include',
