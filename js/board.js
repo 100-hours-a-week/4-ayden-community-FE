@@ -57,7 +57,7 @@ const setBoardDetail = (data, postId) => {
     // 헤드 정보
     const titleElement = document.querySelector('.title');
     const createdAtElement = document.querySelector('.createdAt');
-    const imgElement = document.querySelector('.img');
+    const imgElement = document.querySelector('.img')
     const nicknameElement = document.querySelector('.nickname');
 
     titleElement.textContent = data.postName;
@@ -66,8 +66,8 @@ const setBoardDetail = (data, postId) => {
     createdAtElement.textContent = formattedDate;
 
     // 상세 응답에 작성자 프로필 이미지 없음 → 기본 이미지 사용
-    imgElement.src = DEFAULT_PROFILE_IMAGE;
-
+    imgElement.src = data.profileImage || DEFAULT_PROFILE_IMAGE;
+    console.log('data.profileImage:', data);
     nicknameElement.textContent = data.postUser;
 
     // 바디 정보
@@ -81,70 +81,7 @@ const setBoardDetail = (data, postId) => {
     const contentElement = document.querySelector('.content');
     contentElement.textContent = data.postContent;
 
-    // 좋아요 개수만 표시 (좋아요 토글은 백엔드 미구현)
-    // const likeButtonElement = document.querySelector('.likeButton');
-    // const likeCountElement = likeButtonElement.querySelector('h3');
-    // likeCountElement.textContent = formatCount(data.postLikesCount);
-
-    // // 좋아요 / 좋아요 취소 토글 
-    // let isLiked = Boolean(data.isLiked);
-    // let isLikeLoading = false;
-    // setLikeButtonState(likeButtonElement, isLiked);
-    // likeButtonElement.addEventListener('click', async () => {
-    //     if (isLikeLoading) return;
-    //     isLikeLoading = true;
-    //     try {
-    //         if (!isLiked) {
-    //             // const { ok, status, code, data: likeData } = await likePost(
-    //             //     data.id,
-    //             // );
-    //             const { ok, status, code, data: likeData } = await likePost(
-    //                 postId,
-    //             );
-    //             if (ok) {
-    //                 isLiked = true;
-    //                 setLikeButtonState(likeButtonElement, isLiked);
-    //                 if (likeData && likeData.likeCount !== undefined) {
-    //                     likeCountElement.textContent = formatCount(
-    //                         likeData.likeCount,
-    //                     );
-    //                 }
-    //             } else if (status === 409 && code === 'POST_ALREADY_LIKED') {
-    //                 isLiked = true;
-    //                 setLikeButtonState(likeButtonElement, isLiked);
-    //             } else if (status === HTTP_NOT_AUTHORIZED) {
-    //                 window.location.href = '/html/login.html';
-    //             } else {
-    //                 Dialog('좋아요 실패', '좋아요 처리에 실패하였습니다.');
-    //             }
-    //         } else {
-    //             // const { ok, status, code, data: likeData } = await unlikePost(
-    //             //     data.id,
-    //             // );
-    //             const { ok, status, code, data: likeData } = await unlikePost(
-    //                 postId,
-    //             );
-    //             if (ok) {
-    //                 isLiked = false;
-    //                 setLikeButtonState(likeButtonElement, isLiked);
-    //                 if (likeData && likeData.likeCount !== undefined) {
-    //                     likeCountElement.textContent = formatCount(
-    //                         likeData.likeCount,
-    //                     );
-    //                 }
-    //             } else if (status === 409 && code === 'POST_ALREADY_UNLIKED') {
-    //                 isLiked = false;
-    //                 setLikeButtonState(likeButtonElement, isLiked);
-    //             } else if (status === HTTP_NOT_AUTHORIZED) {
-    //                 window.location.href = '/html/login.html';
-    //             } else {
-    //                 Dialog('좋아요 취소 실패', '좋아요 취소에 실패하였습니다.');
-    //             }
-    //         }
-    //     } finally {
-    //         isLikeLoading = false;
-    //     }
-    // });
+    
     const likeButtonElement = document.querySelector('.likeButton');
 const likeCountElement = likeButtonElement?.querySelector('h3');
 
@@ -330,7 +267,11 @@ const setBoardComment = (data, myInfo) => {
                 myInfo.userId,
                 event.postId,
                 event.commentId,
+                event.profileImage
+                
+                
             );
+            console.log('event:', event);
             commentListElement.appendChild(item);
         });
     }
@@ -397,6 +338,7 @@ const init = async () => {
 
         const profileImage = resolveImageUrl(
             myInfo.profileImage,
+            console.log('myInfo.profileImage:', myInfo.profileImage),
             DEFAULT_PROFILE_IMAGE,
         );
 

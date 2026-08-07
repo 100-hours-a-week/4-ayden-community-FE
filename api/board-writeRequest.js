@@ -27,14 +27,14 @@ export const updatePost = (postId, boardData) => {
 };
 
 // [미구현] 게시글 첨부파일 업로드 - 백엔드에 /posts/upload/attach-file 엔드포인트 없음 (추후 구현)
-// export const fileUpload = formData => {
-//     const result = requestJson(getServerUrl() + '/v1/posts/upload/attach-file', {
-//         method: 'POST',
-//         body: formData,
-//     });
-//
-//     return result;
-// };
+export const fileUpload = formData => {
+    const result = requestJson(getServerUrl() + '/posts/upload/attach', {
+        method: 'POST',
+        body: formData,
+    });
+
+    return result;
+};
 
 export const getBoardItem = postId => {
     const result = requestJson(getServerUrl() + `/posts/${postId}`, {

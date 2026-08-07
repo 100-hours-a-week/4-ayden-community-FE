@@ -6,6 +6,7 @@ import { getPosts } from '../api/indexRequest.js';
 // import { searchPosts } from '../api/indexRequest.js'; // [미구현] 검색 (추후 구현)
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
+// const USER_PROFILE_IMAGE = 
 const HTTP_NOT_AUTHORIZED = 401;
 const SCROLL_THRESHOLD = 0.9;
 const INITIAL_OFFSET = 5;
@@ -55,7 +56,7 @@ const setBoardItem = boardData => {
                     data.postName,
                     data.postViewCount,
                     // 목록 응답에 작성자 프로필 이미지 없음 → 기본 이미지 사용
-                    null,
+                    data.profileImage || DEFAULT_PROFILE_IMAGE,
                     data.postUser,
                     data.postCommentCount,
                     data.postLikesCount,
