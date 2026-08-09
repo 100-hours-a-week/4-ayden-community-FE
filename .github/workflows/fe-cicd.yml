@@ -176,7 +176,7 @@ jobs:
               sudo docker run -d \
                 --name community-frontend \
                 --restart always \
-                -p 80:80 \
+                -p 80:8082 \
                 '$IMAGE'
 
               # 사용한 tar 파일 삭제

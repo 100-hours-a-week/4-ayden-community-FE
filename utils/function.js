@@ -20,8 +20,11 @@ export const getServerUrl = () => {
 
 export const resolveImageUrl = (url, fallback = null) => {
     if (!url) return fallback;
+
+    // 이미 완전한 URL이면 그대로 반환
     if (/^https?:\/\//i.test(url)) return url;
-    return `${getServerUrl()}${url}`;
+
+    return `${getServerUrl()}/${url.replace(/^\/+/, '')}`;
 };
 
 // 세션 쿠키 기반 인증 확인 - 백엔드에 /auth/check 엔드포인트가 없어 현재 미사용 
