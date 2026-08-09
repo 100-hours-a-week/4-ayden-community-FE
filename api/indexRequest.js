@@ -16,7 +16,7 @@ export const getPosts = (offset, limit) => {
     return result;
 };
 
-// [미구현] 게시글 검색 - 백엔드에 /posts/search 엔드포인트 없음 (추후 구현)
+// [기존 미구현 버전] offset/limit/sort 지원 가정 - 현재 백엔드 스펙과 불일치
 // export const searchPosts = (keyword, offset = 0, limit = 5, sort = 'recent') => {
 //     const query = new URLSearchParams({
 //         keyword,
@@ -32,3 +32,15 @@ export const getPosts = (offset, limit) => {
 //     );
 //     return result;
 // };
+
+// 게시글 검색 - 백엔드 GET /posts/search 는 keyword 만 받음 (offset/limit/sort 미지원)
+// 응답은 /posts 와 동일한 PostListResponseDto 목록 (현재 최대 20건)
+export const searchPosts = keyword => {
+    const result = requestJson(
+        `${getServerUrl()}/posts/search?keyword=${encodeURIComponent(keyword)}`,
+        {
+            // credentials: 'include',
+        },
+    );
+    return result;
+};

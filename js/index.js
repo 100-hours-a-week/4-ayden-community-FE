@@ -2,8 +2,9 @@ import BoardItem from '../component/board/boardItem.js';
 import Dialog from '../component/dialog/dialog.js';
 import Header from '../component/header/header.js';
 import { authCheck, getServerUrl, prependChild, resolveImageUrl } from '../utils/function.js';
-import { getPosts } from '../api/indexRequest.js';
+// import { getPosts } from '../api/indexRequest.js';
 // import { searchPosts } from '../api/indexRequest.js'; // [미구현] 검색 (추후 구현)
+import { getPosts, searchPosts } from '../api/indexRequest.js';
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
 // const USER_PROFILE_IMAGE = 
@@ -28,7 +29,7 @@ const updateSortVisibility = () => {
 
 // getBoardItem 함수
 const getBoardItem = async (offsetValue = 0, limitValue = 5) => {
-    const result = await getPosts(offsetValue, limitValue);
+    // const result = await getPosts(offsetValue, limitValue);
     // [미구현] 검색 분기 (추후 구현)
     // const result =
     //     currentKeyword.trim() === ''
@@ -39,6 +40,11 @@ const getBoardItem = async (offsetValue = 0, limitValue = 5) => {
     //               limitValue,
     //               currentSort,
     //           );
+    // 검색 분기 - 검색 API는 keyword 만 받으므로 offset/limit/sort 는 전달하지 않음
+    const result =
+        currentKeyword.trim() === ''
+            ? await getPosts(offsetValue, limitValue)
+            : await searchPosts(currentKeyword.trim());
     if (!result.ok) {
         throw new Error('Failed to load post list.');
     }
@@ -113,7 +119,8 @@ const addSearchEvent = () => {
             return;
         }
         currentKeyword = trimmedKeyword;
-        updateSortVisibility();
+        // 백엔드 검색 API가 sort 를 지원하지 않아 정렬 UI 노출은 보류 (추후 구현)
+        // updateSortVisibility();
         await loadBoardItems({ reset: true });
     };
 
@@ -177,6 +184,9 @@ const init = async () => {
         // addSearchEvent();
         // addSortEvent();
         // addInfinityScrollEvent();
+
+        // 검색만 활성화. 정렬(sort) / 무한 스크롤(offset,limit)은 백엔드 미지원이라 보류
+        addSearchEvent();
     } catch (error) {
         console.error('Initialization failed:', error);
     }

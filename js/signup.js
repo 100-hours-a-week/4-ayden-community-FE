@@ -60,11 +60,14 @@ const sendSignupData = async () => {
         
         location.href = '/html/login.html';
     } else {
-        if (code === 'ALREADY_EXIST_EMAIL') {
+        // if (code === 'ALREADY_EXIST_EMAIL') {
+        if (result.code === 'ALREADY_EXIST_EMAIL') {
             Dialog('회원 가입 실패', '이미 사용 중인 이메일입니다.');
-        } else if (code === 'ALREADY_EXIST_NICKNAME') {
+        } else if (result.code === 'ALREADY_EXIST_NICKNAME') {
+            // } else if (code === 'ALREADY_EXIST_NICKNAME') {
             Dialog('회원 가입 실패', '이미 사용 중인 닉네임입니다.');
-        } else if (code === 'INVALID_INPUT') {
+        } else if (result.code === 'INVALID_INPUT') {
+            // } else if (code === 'INVALID_INPUT') {
             Dialog('회원 가입 실패', '입력값을 확인해주세요.');
         } else {
             Dialog('회원 가입 실패', '잠시 뒤 다시 시도해 주세요', () => {});

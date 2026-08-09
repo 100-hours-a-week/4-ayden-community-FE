@@ -15,6 +15,7 @@ body {
     align-items: center;
     min-height: 100vh;
     margin: 0 calc(50vw - 212.5px);
+    /* margin: 0 calc(45vw - 212.5px); */
     border-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.3);
     background-color: #fff;
@@ -39,7 +40,7 @@ body {
     height: 100vh;
     top: 0;
     z-index: -1;
-    background: url('/public/background/bg.png');
+    background: url('/public/background/circuit.jpg');
     background-repeat: no-repeat;
     background-size: 100vw 100vh;
 }
