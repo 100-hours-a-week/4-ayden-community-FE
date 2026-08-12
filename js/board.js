@@ -1,6 +1,7 @@
 import CommentItem from '../component/comment/comment.js';
 import Dialog from '../component/dialog/dialog.js';
 import Header from '../component/header/header.js';
+import { createComment } from '../api/commentRequest.js';
 import {
     authCheck,
     getServerUrl,
@@ -13,6 +14,9 @@ import {
     deletePost,
     writeComment,
     getComments,
+    //댓글수
+    getCommentsNum,
+    // [미구현] 좋아요 (추후 구현)
     likePost,
     unlikePost,
 } from '../api/boardRequest.js';
@@ -47,105 +51,179 @@ const getBoardDetail = async postId => {
     return data;
 };
 
-const setBoardDetail = data => {
+// const setBoardDetail = data => {
+// 상세 응답에 id 필드가 없어 좋아요 요청이 /posts/undefined/likes 로 나감 → postId를 인자로 받도록 변경
+const setBoardDetail = (data, postId) => {
     // 헤드 정보
     const titleElement = document.querySelector('.title');
     const createdAtElement = document.querySelector('.createdAt');
-    const imgElement = document.querySelector('.img');
+    const imgElement = document.querySelector('.img')
     const nicknameElement = document.querySelector('.nickname');
 
-    titleElement.textContent = data.title;
+    titleElement.textContent = data.postName;
     const date = new Date(data.createdAt);
     const formattedDate = `${date.getFullYear()}-${padTo2Digits(date.getMonth() + 1)}-${padTo2Digits(date.getDate())} ${padTo2Digits(date.getHours())}:${padTo2Digits(date.getMinutes())}:${padTo2Digits(date.getSeconds())}`;
     createdAtElement.textContent = formattedDate;
 
-    imgElement.src = resolveImageUrl(
-        data.profileImage,
-        DEFAULT_PROFILE_IMAGE,
-    );
-
-    nicknameElement.textContent = data.nickname;
+    // 상세 응답에 작성자 프로필 이미지 없음 → 기본 이미지 사용
+    imgElement.src = data.profileImage || DEFAULT_PROFILE_IMAGE;
+    console.log('data.profileImage:', data);
+    nicknameElement.textContent = data.postUser;
 
     // 바디 정보
     const contentImgElement = document.querySelector('.contentImg');
-    const fileUrl = data.fileUrl || resolveImageUrl(data.filePath);
+    const fileUrl = resolveImageUrl(data.postImage);
     if (fileUrl) {
-        console.log(fileUrl);
         const img = document.createElement('img');
         img.src = fileUrl;
         contentImgElement.appendChild(img);
     }
     const contentElement = document.querySelector('.content');
-    contentElement.textContent = data.content;
+    contentElement.textContent = data.postContent;
 
+    
     const likeButtonElement = document.querySelector('.likeButton');
-    const likeCountElement = likeButtonElement.querySelector('h3');
-    let isLiked = Boolean(data.isLiked);
-    let isLikeLoading = false;
+const likeCountElement = likeButtonElement?.querySelector('h3');
 
-    likeCountElement.textContent = formatCount(data.likeCount);
-    setLikeButtonState(likeButtonElement, isLiked);
+if (!likeButtonElement || !likeCountElement) {
+    console.error('좋아요 버튼 또는 좋아요 개수 요소를 찾지 못했습니다.');
+    return;
+}
 
-    likeButtonElement.addEventListener('click', async () => {
-        if (isLikeLoading) return;
-        isLikeLoading = true;
+likeCountElement.textContent = formatCount(data.postLikesCount ?? 0);
 
-        try {
-            if (!isLiked) {
-                const { ok, status, code, data: likeData } = await likePost(
-                    data.id,
+// 백엔드 JSON 키에 맞춰 선택
+let isLiked = Boolean(data.isLiked ?? data.liked);
+let isLikeLoading = false;
+
+setLikeButtonState(likeButtonElement, isLiked);
+
+likeButtonElement.addEventListener('click', async () => {
+    if (isLikeLoading) return;
+
+    isLikeLoading = true;
+    likeButtonElement.disabled = true;
+
+    try {
+        if (!isLiked) {
+            const {
+                ok,
+                status,
+                code,
+                data: likeCount,
+            } = await likePost(postId);
+
+            if (ok) {
+                isLiked = true;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
                 );
-                if (ok) {
-                    isLiked = true;
-                    setLikeButtonState(likeButtonElement, isLiked);
-                    if (likeData && likeData.likeCount !== undefined) {
-                        likeCountElement.textContent = formatCount(
-                            likeData.likeCount,
-                        );
-                    }
-                } else if (status === 409 && code === 'POST_ALREADY_LIKED') {
-                    isLiked = true;
-                    setLikeButtonState(likeButtonElement, isLiked);
-                } else if (status === HTTP_NOT_AUTHORIZED) {
-                    window.location.href = '/html/login.html';
-                } else {
-                    Dialog('좋아요 실패', '좋아요 처리에 실패하였습니다.');
-                }
+
+                // 백엔드 ApiResponse<Long>의 data는 숫자
+                likeCountElement.textContent =
+                    formatCount(likeCount ?? 0);
+
+            } else if (
+                status === 409 &&
+                code === 'ALREADY_LIKED_POST'
+            ) {
+                isLiked = true;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
+                );
+
+            } else if (status === HTTP_NOT_AUTHORIZED) {
+                window.location.href = '/html/login.html';
+
             } else {
-                const { ok, status, code, data: likeData } = await unlikePost(
-                    data.id,
+                console.error('좋아요 실패:', {
+                    status,
+                    code,
+                });
+
+                Dialog(
+                    '좋아요 실패',
+                    '좋아요 처리에 실패하였습니다.',
                 );
-                if (ok) {
-                    isLiked = false;
-                    setLikeButtonState(likeButtonElement, isLiked);
-                    if (likeData && likeData.likeCount !== undefined) {
-                        likeCountElement.textContent = formatCount(
-                            likeData.likeCount,
-                        );
-                    }
-                } else if (status === 409 && code === 'POST_ALREADY_UNLIKED') {
-                    isLiked = false;
-                    setLikeButtonState(likeButtonElement, isLiked);
-                } else if (status === HTTP_NOT_AUTHORIZED) {
-                    window.location.href = '/html/login.html';
-                } else {
-                    Dialog('좋아요 취소 실패', '좋아요 취소에 실패하였습니다.');
-                }
             }
-        } finally {
-            isLikeLoading = false;
+
+        } else {
+            const {
+                ok,
+                status,
+                code,
+                data: likeCount,
+            } = await unlikePost(postId); // data.id가 아님
+
+            if (ok) {
+                isLiked = false;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
+                );
+
+                likeCountElement.textContent =
+                    formatCount(likeCount ?? 0);
+
+            } else if (
+                status === 404 &&
+                code === 'POST_LIKE_NOT_FOUND'
+            ) {
+                isLiked = false;
+
+                setLikeButtonState(
+                    likeButtonElement,
+                    isLiked,
+                );
+
+            } else if (status === HTTP_NOT_AUTHORIZED) {
+                window.location.href = '/html/login.html';
+
+            } else {
+                console.error('좋아요 취소 실패:', {
+                    status,
+                    code,
+                });
+
+                Dialog(
+                    '좋아요 취소 실패',
+                    '좋아요 취소에 실패하였습니다.',
+                );
+            }
         }
-    });
+    } finally {
+        isLikeLoading = false;
+        likeButtonElement.disabled = false;
+    }
+});
 
     const viewCountElement = document.querySelector('.viewCount h3');
-    viewCountElement.textContent = formatCount(data.viewCount);
+    viewCountElement.textContent = formatCount(data.postViewCount);
+};
 
+// 댓글 수는 게시글 상세 응답에 없어서 /posts/{id}/commentCount 로 따로 조회
+const getBoardCommentCount = async postId => {
+    const { ok, data } = await getCommentsNum(postId);
+    if (!ok) return 0;
+    // 숫자만 오는 경우와 { commentCount: n } 형태 둘 다 대응
+    if (typeof data === 'number') return data;
+    return data?.commentCount ?? data?.count ?? 0;
+};
+
+const setBoardCommentCount = count => {
     const commentCountElement = document.querySelector('.commentCount h3');
-    commentCountElement.textContent = data.commentCount.toLocaleString();
+    if (!commentCountElement) return;
+    commentCountElement.textContent = formatCount(count);
 };
 
 const setBoardModify = async (data, myInfo) => {
-    if (myInfo.idx === data.writerId) {
+    // 상세 응답에 작성자 userId가 없어 닉네임으로 본인 글 여부 판단 (서버에서도 권한 검증함)
+    if (myInfo.nickName === data.postUser) {
         const modifyElement = document.querySelector('.hidden');
         modifyElement.classList.remove('hidden');
 
@@ -168,7 +246,7 @@ const setBoardModify = async (data, myInfo) => {
 
         const modifyBtnElement2 = document.querySelector('#modifyBtn');
         modifyBtnElement2.addEventListener('click', () => {
-            window.location.href = `/html/board-modify.html?postId=${data.id}`;
+            window.location.href = `/html/board-modify.html?postId=${data.postId}`;
         });
     }
 };
@@ -188,8 +266,12 @@ const setBoardComment = (data, myInfo) => {
                 event,
                 myInfo.userId,
                 event.postId,
-                event.id,
+                event.commentId,
+                event.profileImage
+                
+                
             );
+            console.log('event:', event);
             commentListElement.appendChild(item);
         });
     }
@@ -197,13 +279,24 @@ const setBoardComment = (data, myInfo) => {
 
 const addComment = async () => {
     const comment = document.querySelector('textarea').value;
-    const pageId = getQueryString('id');
+    const postId = getQueryString('id');
 
-    const { ok } = await writeComment(pageId, comment);
+    // const { ok } = await writeComment(pageId, comment);
+    // if (ok) {
+    //     window.location.reload();
+    // } else {
+    //     Dialog('댓글 등록 실패', '댓글 등록에 실패하였습니다.');
+    // }
+    // 응답 구조 바꾸기 전까지만 사용할 임시 형태, dto반환에서는 
+    if (!comment) {
+        Dialog('댓글 등록 실패', '댓글 내용을 입력해주세요.');
+        return;
+    }
 
-    if (ok) {
+    try {
+        await createComment(postId, comment);
         window.location.reload();
-    } else {
+    } catch (error) {
         Dialog('댓글 등록 실패', '댓글 등록에 실패하였습니다.');
     }
 };
@@ -231,13 +324,10 @@ const inputComment = async () => {
 
 const init = async () => {
     try {
-        const data = await authCheck();
-        const myInfoResult = await data.json();
-        if (data.status !== HTTP_OK) {
-            throw new Error('사용자 정보를 불러오는데 실패하였습니다.');
-        }
+        // authCheck()는 저장된 user 객체를 반환(없으면 로그인 페이지로 이동)
+        const myInfo = await authCheck();
+        if (!myInfo) return;
 
-        const myInfo = myInfoResult.data;
         const commentBtnElement = document.querySelector('.commentInputBtn');
         const textareaElement = document.querySelector(
             '.commentInputWrap textarea',
@@ -245,12 +335,10 @@ const init = async () => {
         textareaElement.addEventListener('input', inputComment);
         commentBtnElement.addEventListener('click', addComment);
         commentBtnElement.disabled = true;
-        console.log(myInfo);
-        if (data.status === HTTP_NOT_AUTHORIZED) {
-            window.location.href = '/html/login.html';
-        }
+
         const profileImage = resolveImageUrl(
-            myInfo.profileImageUrl,
+            myInfo.profileImage,
+            console.log('myInfo.profileImage:', myInfo.profileImage),
             DEFAULT_PROFILE_IMAGE,
         );
 
@@ -260,12 +348,13 @@ const init = async () => {
 
         const pageData = await getBoardDetail(pageId);
 
-        if (parseInt(pageData.userId, 10) === parseInt(myInfo.userId, 10)) {
-            setBoardModify(pageData, myInfo);
-        }
-        setBoardDetail(pageData);
+        // 본인 글 여부는 setBoardModify 내부에서 닉네임으로 판단
+        setBoardModify(pageData, myInfo);
+        // setBoardDetail(pageData);
+        setBoardDetail(pageData, pageId);
 
         getBoardComment(pageId).then(data => setBoardComment(data, myInfo));
+        getBoardCommentCount(pageId).then(setBoardCommentCount);
     } catch (error) {
         console.error(error);
     }

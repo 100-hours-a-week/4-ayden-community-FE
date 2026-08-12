@@ -7,7 +7,8 @@ const app = express();
 
 dotenv.config();
 
-const port = 8080;
+
+const port = process.env.PORT || 8082;
 
 // 현재 파일의 URL에서 디렉토리 경로를 추출
 const __filename = fileURLToPath(import.meta.url);

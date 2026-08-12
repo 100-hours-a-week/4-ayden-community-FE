@@ -9,11 +9,13 @@ export const getServerUrl = () => {
     if (configUrl) {
         return configUrl.replace(/\/+$/, '');
     }
-
+//이 부분 하드코딩 -> 로컬은 8080 배포 후는 api
     const host = window.location.hostname;
-    return host.includes('localhost')
-        ? 'http://localhost:3000'
-        : `http://${host}:3000`;
+    const isLocal =
+        host ==='localhost' || host === '127.0.0.1';
+    return isLocal
+        ? 'http://localhost:8080'
+        : 'https://api.ayden1.cloud';
 };
 
 export const resolveImageUrl = (url, fallback = null) => {
@@ -22,25 +24,57 @@ export const resolveImageUrl = (url, fallback = null) => {
     return `${getServerUrl()}${url}`;
 };
 
-export const serverSessionCheck = async () => {
-    const res = await fetch(`${getServerUrl()}/v1/auth/check`, {
-        method: 'GET',
-        credentials: 'include',
-    });
-    return res;
+// 세션 쿠키 기반 인증 확인 - 백엔드에 /auth/check 엔드포인트가 없어 현재 미사용 
+// export const serverSessionCheck = async () => {
+//     const res = await fetch(`${getServerUrl()}/v1/auth/check`, {
+//         method: 'GET',
+//         credentials: 'include',
+//     });
+//     return res;
+// };
+//
+// export const authCheck = async () => {
+//     const HTTP_OK = 200;
+//     const response = await serverSessionCheck();
+//     if (!response || response.status !== HTTP_OK)
+//         location.href = '/html/login.html';
+//     return response;
+// };
+//
+// export const authCheckReverse = async () => {
+//     const response = await serverSessionCheck();
+//     if (response && response.ok) {
+//         location.href = '/';
+//     }
+// };
+
+// JWT 액세스 토큰 기반. 로그인 응답에서 저장해 둔 accessToken / user 사용.
+export const getAccessToken = () =>
+    typeof localStorage !== 'undefined'
+        ? localStorage.getItem('accessToken')
+        : null;
+
+export const getStoredUser = () => {
+    try {
+        return JSON.parse(localStorage.getItem('user'));
+    } catch (error) {
+        return null;
+    }
 };
 
+// 로그인 확인: 토큰/유저 없으면 로그인 페이지로, 있으면 저장된 user 객체 반환
 export const authCheck = async () => {
-    const HTTP_OK = 200;
-    const response = await serverSessionCheck();
-    if (!response || response.status !== HTTP_OK)
+    const token = getAccessToken();
+    const user = getStoredUser();
+    if (!token || !user) {
         location.href = '/html/login.html';
-    return response;
+        return null;
+    }
+    return user;
 };
 
 export const authCheckReverse = async () => {
-    const response = await serverSessionCheck();
-    if (response && response.ok) {
+    if (getAccessToken()) {
         location.href = '/';
     }
 };

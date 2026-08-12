@@ -18,11 +18,14 @@ const headerDropdownMenu = () => {
             await fetch(`${getServerUrl()}/v1/auth/logout`, {
                 method: 'POST',
                 credentials: 'include',
+                
             });
+
         } finally {
             location.href = '/html/login.html';
         }
     });
+    
 
     wrap.classList.add('drop');
 

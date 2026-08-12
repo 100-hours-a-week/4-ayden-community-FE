@@ -14,10 +14,17 @@ const button = document.querySelector('#signupBtn');
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
 const HTTP_CREATED = 201;
 
-const dataResponse = await authCheck();
-const data = await dataResponse.json();
+//dto응답으로 인한 주석
+// const dataResponse = await authCheck();
+// const data = await dataResponse.json();
+// const profileImage = resolveImageUrl(
+//     data.data.profileImageUrl,
+//     DEFAULT_PROFILE_IMAGE,
+// );
+const data = await authCheck();
+
 const profileImage = resolveImageUrl(
-    data.data.profileImageUrl,
+    data.profileImage,
     DEFAULT_PROFILE_IMAGE,
 );
 
@@ -93,26 +100,54 @@ const addEventForInputElements = () => {
     });
 };
 
+//apiResponse변경 후 수정
+// const modifyPassword = async () => {
+//     const { password } = modifyData;
+
+//     const { status } = await changePassword(password);
+
+//     if (status == HTTP_CREATED) {
+//         try {
+//             await fetch(`${getServerUrl()}/v1/auth/logout`, {
+//                 method: 'POST',
+//                 credentials: 'include',
+//             });
+//         } catch (error) {
+//             console.error('로그아웃 요청 실패:', error);
+//         }
+//         localStorage.clear();
+//         location.href = '/html/login.html';
+//     } else {
+//         Dialog('비밀번호 변경 실패', () => {
+//             location.href = '/html/modifyPassword.html';
+//         });
+//     }
+// };
 const modifyPassword = async () => {
-    const { password } = modifyData;
+    const { password, passwordCheck } = modifyData;
 
-    const { status } = await changePassword(password);
+    if (!password || !passwordCheck || password !== passwordCheck) {
+        Dialog('비밀번호 변경 실패', '비밀번호를 확인해주세요.');
+        return;
+    }
 
-    if (status == HTTP_CREATED) {
-        try {
-            await fetch(`${getServerUrl()}/v1/auth/logout`, {
-                method: 'POST',
-                credentials: 'include',
-            });
-        } catch (error) {
-            console.error('로그아웃 요청 실패:', error);
-        }
-        localStorage.clear();
-        location.href = '/html/login.html';
-    } else {
-        Dialog('비밀번호 변경 실패', () => {
-            location.href = '/html/modifyPassword.html';
+    try {
+        console.log('비밀번호 변경 요청:', {
+            userId: data.userId,
+            newPassword: password,
+            newPasswordCheck: passwordCheck,
         });
+
+        const result = await changePassword(data.userId, password, passwordCheck);
+        console.log("pwdResponse",result);
+
+        localStorage.clear();
+        
+        //임시로 막아둠
+        location.href = '/html/login.html';
+    } catch (error) {
+        console.error('비밀번호 변경 실패:', error);
+
     }
 };
 
